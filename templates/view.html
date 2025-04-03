@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Annotations - YouTube Video Annotation Tool</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>YouTube Video Annotation Tool</h1>
+        <nav>
+            <a href="/">Annotate</a>
+            <a href="/view" class="active">View Annotations</a>
+        </nav>
+    </header>
+
+    <main>
+        <section id="video-list-section">
+            <h2>Available Videos</h2>
+            <div id="video-grid" class="grid-container"></div>
+        </section>
+
+        <section id="video-annotations-section" class="hidden">
+            <div class="view-header">
+                <button id="back-to-list" class="secondary-btn">
+                    <i class="fas fa-arrow-left"></i> Back to Video List
+                </button>
+                <h2 id="annotations-title">Annotations</h2>
+            </div>
+            
+            <div class="split-view">
+                <div class="video-panel">
+                    <video id="annotation-player" controls></video>
+                </div>
+                <div class="annotations-panel">
+                    <div id="annotation-list"></div>
+                    <div id="annotation-details" class="hidden">
+                        <h3>Question Details</h3>
+                        <div id="question-details"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>YouTube Video Annotation Tool &copy; 2025</p>
+    </footer>
+
+    <script src="/static/js/view.js"></script>
+</body>
+</html>
