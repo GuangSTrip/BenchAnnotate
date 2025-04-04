@@ -1,6 +1,7 @@
 import os
 import csv
 import json
+import re
 import uuid
 import subprocess
 from datetime import datetime
@@ -40,13 +41,15 @@ def view_annotations():
 def download_video():
     data = request.json
     youtube_url = data.get('url')
+    youtube_id = re.search(r"v=([^&]+)", youtube_url).group(1)
     
     if not youtube_url:
         return jsonify({'error': 'No URL provided'}), 400
     
     try:
         # Generate a unique ID for this video
-        video_id = str(uuid.uuid4())
+        # video_id = str(uuid.uuid4())  
+        video_id = youtube_id
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{video_id}.mp4")
         
         # Use yt-dlp to download the video
@@ -78,7 +81,7 @@ def download_video():
         with open(csv_path, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow([
-                'video_id', 
+                'video_id',
                 'question_id', 
                 'question_start_time', 
                 'question_stop_time', 

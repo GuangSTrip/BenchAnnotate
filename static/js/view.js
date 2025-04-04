@@ -170,11 +170,28 @@ function selectAnnotation(annotation, index) {
     elements.annotationDetails.classList.remove('hidden');
     
     // Parse the answer choices (stored as a JSON string)
+    // let answerChoices = [];
+    // try {
+    //     answerChoices = JSON.parse(annotation.answer_choices);
+    // } catch (e) {
+    //     console.error('Error parsing answer choices:', e);
+    // }
+
+    // Handle the answer choices (could be string or already parsed)
     let answerChoices = [];
-    try {
-        answerChoices = JSON.parse(annotation.answer_choices);
-    } catch (e) {
-        console.error('Error parsing answer choices:', e);
+
+    if (typeof annotation.answer_choices === 'string') {
+        // If it's a string, try parsing it
+        try {
+            answerChoices = JSON.parse(annotation.answer_choices);
+        } catch (e) {
+            console.error('Error parsing answer choices:', e);
+            // Fallback to showing as a single answer if parsing fails
+            answerChoices = [annotation.answer_choices];
+        }
+    } else if (Array.isArray(annotation.answer_choices)) {
+        // If it's already an array (deserialized by backend)
+        answerChoices = annotation.answer_choices;
     }
     
     // Format the details view
