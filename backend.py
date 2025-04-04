@@ -48,8 +48,8 @@ def download_video():
     
     try:
         # Generate a unique ID for this video
-        # video_id = str(uuid.uuid4())  
-        video_id = youtube_id
+        # video_id = str(uuid.uuid4())
+        video_id = youtube_id + '_' + str(uuid.uuid4())
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{video_id}.mp4")
         
         # Use yt-dlp to download the video
