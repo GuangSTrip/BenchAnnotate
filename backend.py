@@ -97,9 +97,18 @@ def download_video():
             '--get-title',
             youtube_url
         ]
-        title_process = subprocess.Popen(get_title_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #title_process = subprocess.Popen(get_title_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # Use encoding compatible with Windows (usually cp1252 or your local code page)
+        title_process = subprocess.Popen(
+            get_title_command, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE, 
+            encoding='utf-8',      # explicitly request utf-8 decoding
+            errors='replace'       # replace problematic characters instead of raising exceptions
+        )
         title_stdout, _ = title_process.communicate()
-        video_title = title_stdout.decode().strip() if title_process.returncode == 0 else "Untitled Video"
+        #video_title = title_stdout.decode().strip() if title_process.returncode == 0 else "Untitled Video"
+        video_title = title_stdout.strip() if title_process.returncode == 0 else "Untitled Video"
         
         # Return the video details
         return jsonify({
