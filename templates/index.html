@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Video Annotation Tool</title>
+    <title>Predict Bench Annotation Tool</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 </head>
 <body>
     <header>
-        <h1>YouTube Video Annotation Tool</h1>
+        <h1>Spatial Benchmark Annotation Tool</h1>
         <nav>
             <a href="/" class="active">Annotate</a>
             <a href="/view">View Annotations</a>
@@ -18,15 +18,22 @@
 
     <main>
         <section id="video-input-section">
-            <h2>Step 1: Enter YouTube URL</h2>
+            <h2>Step 1: Enter YouTube URL or Load Local Video</h2>
             <div class="input-group">
                 <input type="text" id="youtube-url" placeholder="Paste YouTube URL here...">
                 <button id="download-btn" class="primary-btn">
                     <i class="fas fa-download"></i> Download Video
                 </button>
+                <!-- 隐藏的文件选择器 -->
+                <input type="file" id="local-video-file" accept="video/*" style="display: none;">
+                <button id="load-local-btn" class="primary-btn">
+                    <i class="fas fa-upload"></i> Load Local Video
+                </button>
             </div>
             <div id="download-status" class="status-message"></div>
+            <div id="upload-status" class="status-message"></div>
         </section>
+
 
         <section id="video-player-section" class="hidden">
             <h2 id="video-title">Step 2: Video Playback</h2>
@@ -38,6 +45,7 @@
                         <div id="progress-bar"></div>
                         <div id="shot-markers"></div>
                         <div id="selection-start" class="timeline-marker" title="Selection Start"></div>
+                        <div id="selection-cutpoint" class="timeline-marker-cutpoint" title="Selection Cutpoint"></div>
                         <div id="selection-end" class="timeline-marker" title="Selection End"></div>
                     </div>
                     
@@ -50,11 +58,20 @@
                         <button id="set-start-btn" class="control-btn">
                             <i class="fas fa-flag-checkered"></i> Set Start
                         </button>
+                        <button id="set-cutpoint-btn" class="control-btn">
+                            <i class="fas fa-map-marker-alt"></i> Set Cut Point
+                        </button>
                         <button id="set-end-btn" class="control-btn">
                             <i class="fas fa-flag"></i> Set End
                         </button>
                         <button id="preview-selection-btn" class="control-btn">
                             <i class="fas fa-eye"></i> Preview Selection
+                        </button>
+                        <button id="play-start-to-cutpoint-btn" class="control-btn">
+                            <i class="fas fa-play"></i> Play Start → Cut
+                        </button>
+                        <button id="play-cutpoint-to-end-btn" class="control-btn">
+                            <i class="fas fa-play"></i> Play Cut → End
                         </button>
                         <button id="detect-shots-btn" class="control-btn">
                             <i class="fas fa-film"></i> Detect Shots
@@ -71,7 +88,29 @@
                     <label for="question-text">Question:</label>
                     <textarea id="question-text" placeholder="Enter your question based on the selected video segment..."></textarea>
                 </div>
-                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="question-type">Question Type:</label>
+                        <select id="question-type">
+                            <option value="" disabled selected>Select an type</option>
+                            <option value="counting">Counting</option>
+                            <option value="relation">Relation</option>
+                            <option value="relativeDistance">Relative Distance</option>
+                            <option value="appearanceOrder">Appearance Order</option>
+                            <option value="routePlan">Route Plan</option>
+                            <option value="location">Location</option>
+                            <option value="relativeSize">Relative Size</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="predict-direction">Predict Direction:</label>
+                        <select id="predict-direction">
+                            <option value="" disabled selected>Select an Direction</option>
+                            <option value="future">Future</option>
+                            <option value="past">Past</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="form-group" id="answers-container">
                     <label>Answer Choices:</label>
                     <div class="answer-options">
@@ -107,7 +146,7 @@
     </main>
 
     <footer>
-        <p>YouTube Video Annotation Tool &copy; 2025</p>
+        <p>Spatial Benchmark Annotation Tool &copy; 2025</p>
     </footer>
 
     <script src="/static/js/app.js"></script>

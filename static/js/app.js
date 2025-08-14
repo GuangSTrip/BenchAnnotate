@@ -7,6 +7,7 @@ let state = {
     videoDuration: 0,
     shots: [],
     selectionStart: 0,
+    selectionCutpoint: 0,
     selectionEnd: 0,
     currentAnswerCount: 2,
     savedAnnotations: []
@@ -18,6 +19,10 @@ const elements = {
     youtubeUrl: document.getElementById('youtube-url'),
     downloadBtn: document.getElementById('download-btn'),
     downloadStatus: document.getElementById('download-status'),
+    loadLocalBtn: document.getElementById('load-local-btn'),
+    localFile: document.getElementById('local-video-file'),
+    uploadStatus: document.getElementById('upload-status'),
+
     
     // Video Player Section
     videoPlayerSection: document.getElementById('video-player-section'),
@@ -27,6 +32,7 @@ const elements = {
     progressBar: document.getElementById('progress-bar'),
     shotMarkers: document.getElementById('shot-markers'),
     selectionStart: document.getElementById('selection-start'),
+    selectionCutpoint: document.getElementById('selection-cutpoint'), //zyg
     selectionEnd: document.getElementById('selection-end'),
     currentTime: document.getElementById('current-time'),
     duration: document.getElementById('duration'),
@@ -34,8 +40,11 @@ const elements = {
     // Timeline Controls
     playPauseBtn: document.getElementById('play-pause-btn'),
     setStartBtn: document.getElementById('set-start-btn'),
+    setCutpointBtn: document.getElementById('set-cutpoint-btn'), // zyg
     setEndBtn: document.getElementById('set-end-btn'),
     previewSelectionBtn: document.getElementById('preview-selection-btn'),
+    previewFormerBtn: document.getElementById('play-start-to-cutpoint-btn'), //zyg
+    previewLaterBtn: document.getElementById('play-cutpoint-to-end-btn'), //zyg
     detectShotsBtn: document.getElementById('detect-shots-btn'),
     
     // Annotation Section
@@ -45,6 +54,8 @@ const elements = {
     addAnswerBtn: document.getElementById('add-answer-btn'),
     saveAnnotationBtn: document.getElementById('save-annotation-btn'),
     saveStatus: document.getElementById('save-status'),
+    questionType: document.getElementById('question-type'),
+    predictDirection: document.getElementById('predict-direction'),
     
     // Saved Annotations Section
     savedAnnotationsSection: document.getElementById('saved-annotations-section'),
@@ -60,8 +71,11 @@ function init() {
     elements.timeline.addEventListener('click', seekVideo);
     elements.playPauseBtn.addEventListener('click', togglePlayPause);
     elements.setStartBtn.addEventListener('click', setSelectionStart);
+    elements.setCutpointBtn.addEventListener('click', setSelectionCutpoint); //zyg
     elements.setEndBtn.addEventListener('click', setSelectionEnd);
     elements.previewSelectionBtn.addEventListener('click', previewSelection);
+    elements.previewFormerBtn.addEventListener('click', previewFormer); //zyg
+    elements.previewLaterBtn.addEventListener('click', previewLater);
     elements.detectShotsBtn.addEventListener('click', detectShots);
     elements.addAnswerBtn.addEventListener('click', addAnswerOption);
     elements.saveAnnotationBtn.addEventListener('click', saveAnnotation);
@@ -75,6 +89,11 @@ function init() {
             removeAnswerOption(e.target.dataset.id);
         }
     });
+
+    elements.loadLocalBtn.addEventListener('click', () => { //zyg
+        elements.localFile.click();
+    })
+    elements.localFile.addEventListener('change', handleLocalFileUpload); //zyg
 }
 
 // Download the YouTube video
@@ -134,6 +153,45 @@ async function downloadVideo() {
     }
 }
 
+async function handleLocalFileUpload() { //zyg
+    const file = elements.localFile.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    showStatus(elements.uploadStatus, 'Uploading local video...', 'status-warning');
+    elements.loadLocalBtn.disabled = true;
+
+    try {
+        const response = await fetch('/api/upload_local', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Upload failed');
+
+        // 更新状态和视频路径
+        state.videoId = data.video_id;
+        elements.videoTitle.textContent = data.video_title;
+        elements.videoPlayer.src = data.video_path;
+
+        // 展示视频播放和注释界面
+        elements.videoPlayerSection.classList.remove('hidden');
+        elements.annotationSection.classList.remove('hidden');
+
+        showStatus(elements.uploadStatus, 'Video loaded successfully!', 'status-success');
+        loadAnnotations(data.video_id);
+
+    } catch (error) {
+        showStatus(elements.uploadStatus, `Error: ${error.message}`, 'status-error');
+    } finally {
+        elements.loadLocalBtn.disabled = false;
+    }
+}
+
+
 // Initialize video player after metadata is loaded
 function initializeVideo() {
     state.videoDuration = elements.videoPlayer.duration;
@@ -189,6 +247,21 @@ function setSelectionStart() {
     updateTimelineMarkers();
 }
 
+// zyg Set selection cutpoint time
+function setSelectionCutpoint() {
+    state.selectionCutpoint = elements.videoPlayer.currentTime;
+
+    //Ensure cutpoint time is after start time
+    if (state.selectionCutpoint < state.selectionStart) {
+        state.selectionCutpoint = state.selectionStart
+    }
+    //Ensure cutpoint time is before end time
+    if (state.selectionCutpoint > state.selectionEnd) {
+        state.selectionEnd = state.selectionCutpoint;
+    }
+    updateTimelineMarkers();
+}
+
 // Set selection end time
 function setSelectionEnd() {
     state.selectionEnd = elements.videoPlayer.currentTime;
@@ -204,9 +277,11 @@ function setSelectionEnd() {
 // Update timeline marker positions
 function updateTimelineMarkers() {
     const startPercent = (state.selectionStart / state.videoDuration) * 100;
+    const cutpointPercent = (state.selectionCutpoint / state.videoDuration) * 100; //zyg
     const endPercent = (state.selectionEnd / state.videoDuration) * 100;
     
     elements.selectionStart.style.left = `${startPercent}%`;
+    elements.selectionCutpoint.style.left = `${cutpointPercent}%`; //zyg
     elements.selectionEnd.style.left = `${endPercent}%`;
 }
 
@@ -214,6 +289,47 @@ function updateTimelineMarkers() {
 function previewSelection() {
     // Set video time to selection start
     elements.videoPlayer.currentTime = state.selectionStart;
+    
+    // Play the video
+    elements.videoPlayer.play();
+    elements.playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+    
+    // Set up an event listener to pause when reaching the end of the selection
+    const pauseAtEnd = () => {
+        if (elements.videoPlayer.currentTime >= state.selectionEnd) {
+            elements.videoPlayer.pause();
+            elements.playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+            elements.videoPlayer.removeEventListener('timeupdate', pauseAtEnd);
+        }
+    };
+    
+    elements.videoPlayer.addEventListener('timeupdate', pauseAtEnd);
+}
+
+// Preview from the start to cutpoint ZYG
+function previewFormer() {
+    // Set video time to selection start
+    elements.videoPlayer.currentTime = state.selectionStart;
+    
+    // Play the video
+    elements.videoPlayer.play();
+    elements.playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+    
+    const pauseAtCut = () => {
+        if (elements.videoPlayer.currentTime >= state.selectionCutpoint) {
+            elements.videoPlayer.pause();
+            elements.playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+            elements.videoPlayer.removeEventListener('timeupdate', pauseAtCut);
+        }
+    };
+
+    elements.videoPlayer.addEventListener('timeupdate', pauseAtCut);
+}
+
+// Preview from the cutpoint to end ZYG
+function previewLater() {
+    // Set video time to selection start
+    elements.videoPlayer.currentTime = state.selectionCutpoint;
     
     // Play the video
     elements.videoPlayer.play();
@@ -342,10 +458,13 @@ async function saveAnnotation() {
     const annotationData = {
         video_id: state.videoId,
         start_time: state.selectionStart,
+        cutpoint_time: state.selectionCutpoint,
         stop_time: state.selectionEnd,
         question: elements.questionText.value.trim(),
         answer_choices: answerChoices,
-        correct_answer: parseInt(correctAnswerRadio.value)
+        correct_answer: parseInt(correctAnswerRadio.value),
+        question_type: elements.questionType.value,
+        predict_direction: elements.predictDirection.value,
     };
     
     // Disable save button while saving
@@ -387,7 +506,7 @@ async function saveAnnotation() {
 }
 
 // Validate the annotation form
-function validateAnnotationForm() {
+function validateAnnotationForm() { 
     // Check if question is filled
     if (!elements.questionText.value.trim()) {
         showStatus(elements.saveStatus, 'Please enter a question', 'status-error');
@@ -415,6 +534,19 @@ function validateAnnotationForm() {
         showStatus(elements.saveStatus, 'Please select a valid video segment (at least 1 second)', 'status-error');
         return false;
     }
+
+    //todo check for cutpoint
+
+    // check for question attribute
+    if (!elements.questionType.value) {
+        showStatus(elements.saveStatus, 'Please select a question type', 'status-error');
+        return false;
+    }
+
+    if (!elements.predictDirection.value){
+        showStatus(elements.saveStatus, 'Please select a predict direction', 'status-error');
+        return false;
+    }
     
     return true;
 }
@@ -439,6 +571,8 @@ function resetAnnotationForm() {
     `;
     
     state.currentAnswerCount = 2;
+    elements.questionType.selectedIndex = 0;
+    elements.predictDirection.selectedIndex = 0;
 }
 
 // Load annotations for the current video
@@ -519,6 +653,7 @@ function setupDragMarkers() {
     // Mouse down on marker to start dragging
     elements.selectionStart.addEventListener('mousedown', startDrag);
     elements.selectionEnd.addEventListener('mousedown', startDrag);
+    elements.selectionCutpoint.addEventListener('mousedown', startDrag);
     
     // Mouse move to update position
     document.addEventListener('mousemove', (e) => {
@@ -536,6 +671,9 @@ function setupDragMarkers() {
         // Update the appropriate marker
         if (currentMarker === elements.selectionStart) {
             state.selectionStart = Math.min(time, state.selectionEnd - 0.1);
+        } else if (currentMarker === elements.selectionCutpoint) {
+            // Cutpoint 夹在 start 和 end 之间
+            state.selectionCutpoint = Math.min(Math.max(time, state.selectionStart + 0.1), state.selectionEnd - 0.1);
         } else {
             state.selectionEnd = Math.max(time, state.selectionStart + 0.1);
         }

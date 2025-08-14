@@ -21,7 +21,7 @@ os.makedirs(ANNOTATION_FOLDER, exist_ok=True)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['ANNOTATION_FOLDER'] = ANNOTATION_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500 MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 2048 * 1024 * 1024  # 2048 MB max file size zyg
 
 # File extension whitelist
 ALLOWED_EXTENSIONS = {'mp4', 'webm', 'mkv'}
@@ -85,9 +85,12 @@ def download_video():
                 'question_id', 
                 'question_start_time', 
                 'question_stop_time', 
+                'question_cutpoint_time',
                 'question_text', 
                 'answer_choices', 
                 'correct_answer',
+                'question_type',
+                'predict_direction',
                 'timestamp'
             ])
         
@@ -120,6 +123,56 @@ def download_video():
         
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
+@app.route('/api/upload_local', methods=['POST'])
+def upload_local_video():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'File type not allowed'}), 400
+
+    try:
+        filename = secure_filename(file.filename)
+        video_id = str(uuid.uuid4())
+        saved_filename = f"{video_id}.mp4"
+        save_path = os.path.join(app.config['UPLOAD_FOLDER'], saved_filename)
+        file.save(save_path)
+
+        video_title = os.path.splitext(filename)[0]  # 用原文件名做标题
+
+        # 创建空的标注 CSV 文件
+        csv_path = os.path.join(app.config['ANNOTATION_FOLDER'], f"video_{video_id}.csv")
+        with open(csv_path, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow([
+                'video_id',
+                'question_id', 
+                'question_start_time', 
+                'question_stop_time', 
+                'question_cutpoint_time',
+                'question_text', 
+                'answer_choices', 
+                'correct_answer',
+                'question_type',
+                'predict_direction',
+                'timestamp'
+            ])
+
+        return jsonify({
+            'success': True,
+            'video_id': video_id,
+            'video_path': f"/static/videos/{saved_filename}",
+            'video_title': video_title
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Upload failed: {str(e)}'}), 500
 
 @app.route('/api/detect_shots', methods=['POST'])
 def detect_shots():
@@ -230,7 +283,7 @@ def save_annotation():
     data = request.json
     
     # Validate required fields
-    required_fields = ['video_id', 'start_time', 'stop_time', 'question', 'answer_choices', 'correct_answer']
+    required_fields = ['video_id', 'start_time', 'stop_time', 'cutpoint_time', 'question', 'answer_choices', 'correct_answer', 'question_type', 'predict_direction']
     missing_fields = [field for field in required_fields if field not in data]
     
     if missing_fields:
@@ -260,9 +313,12 @@ def save_annotation():
                 question_id,
                 data['start_time'],
                 data['stop_time'],
+                data['cutpoint_time'],
                 data['question'],
                 answer_choices_json,
                 data['correct_answer'],
+                data['question_type'],
+                data['predict_direction'],
                 timestamp
             ])
         

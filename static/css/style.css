@@ -245,6 +245,15 @@ video {
     cursor: ew-resize;
 }
 
+.timeline-marker-cutpoint { 
+    position: absolute;
+    width: 8px;
+    height: 30px;
+    background-color: #ff6600;
+    top: 0;
+    cursor: ew-resize;
+}
+
 #selection-start {
     left: 0;
     border-top-left-radius: 4px;
@@ -281,6 +290,17 @@ video {
     display: block;
     margin-bottom: 0.5rem;
     font-weight: 600;
+}
+
+.form-row { /* zyg for question attribute*/
+    display: flex;
+    gap: 20px; /* 控制选择框之间的间距 */
+    flex-wrap: wrap; /* 小屏幕下自动换行 */
+}
+
+.form-row .form-group {
+    flex: 1; /* 每个选择框平分宽度 */
+    min-width: 200px; /* 设置最小宽度，避免太小 */
 }
 
 .answer-options {
